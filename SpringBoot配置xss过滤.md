@@ -1,0 +1,208 @@
+---
+title: SpringBoot配置xss过滤
+date: 2020-07-01 20:00:48
+categories: 
+- SpringBoot
+tags:
+- SpringBoot
+---
+
+SpringBoot配置Xss攻击过滤
+<!-- more -->
+
+## 步骤
+1. 实现Filter接口，实现Filter方法
+``` actionscript
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+  
+/** 
+ * 拦截防止xss注入
+ * 通过Jsoup过滤请求参数内的特定字符
+ * @author yangwk 
+ */  
+public class XssFilter implements Filter {  
+	private static Logger logger = LoggerFactory.getLogger(XssFilter.class);
+
+	/**
+	 * 是否过滤富文本内容
+	 */
+	private static boolean IS_INCLUDE_RICH_TEXT = false;
+	
+	public List<String> excludes = new ArrayList<>();
+  
+    @Override
+	public void doFilter(ServletRequest request, ServletResponse response, FilterChain filterChain) throws IOException,ServletException {
+    	if(logger.isDebugEnabled()){
+  			logger.debug("xss filter is open");
+  		}
+  		
+  		HttpServletRequest req = (HttpServletRequest) request;
+		HttpServletResponse resp = (HttpServletResponse) response;
+  		if(handleExcludeURL(req, resp)){
+  			filterChain.doFilter(request, response);
+			return;
+		}
+  		
+  		XssHttpServletRequestWrapper xssRequest = new XssHttpServletRequestWrapper((HttpServletRequest) request,IS_INCLUDE_RICH_TEXT);
+  		filterChain.doFilter(xssRequest, response);
+    }
+    
+    private boolean handleExcludeURL(HttpServletRequest request, HttpServletResponse response) {
+
+		if (excludes == null || excludes.isEmpty()) {
+			return false;
+		}
+
+		String url = request.getServletPath();
+		for (String pattern : excludes) {
+			Pattern p = Pattern.compile("^" + pattern);
+			Matcher m = p.matcher(url);
+			if (m.find()) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	@Override
+	public void init(FilterConfig filterConfig) throws ServletException {
+		if(logger.isDebugEnabled()){
+			logger.debug("xss filter init~~~~~~~~~~~~");
+		}
+		String isIncludeRichText = filterConfig.getInitParameter("isIncludeRichText");
+		if(StringUtils.isNotBlank(isIncludeRichText)){
+			IS_INCLUDE_RICH_TEXT = BooleanUtils.toBoolean(isIncludeRichText);
+		}
+		
+		String temp = filterConfig.getInitParameter("excludes");
+		if (temp != null) {
+			String[] url = temp.split(",");
+			for (int i = 0; url != null && i < url.length; i++) {
+				excludes.add(url[i]);
+			}
+		}
+	}
+
+	@Override
+	public void destroy() {}  
+  
+}  
+```
+
+2. 将自定义Filter加入过滤链
+``` java
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequestWrapper;
+
+import com.bootdo.common.utils.xss.JsoupUtil;
+import org.apache.commons.lang3.StringUtils;
+
+
+/** 
+ * {@link XssHttpServletRequestWrapper}
+ * @author win7
+ */  
+public class XssHttpServletRequestWrapper extends HttpServletRequestWrapper {  
+    HttpServletRequest orgRequest = null;  
+    private boolean isIncludeRichText = false;
+  
+    public XssHttpServletRequestWrapper(HttpServletRequest request, boolean isIncludeRichText) {  
+        super(request);  
+        orgRequest = request;
+        this.isIncludeRichText = isIncludeRichText;
+    }  
+  
+    /** 
+    * 覆盖getParameter方法，将参数名和参数值都做xss过滤。 
+    * 如果需要获得原始的值，则通过super.getParameterValues(name)来获取 
+    * getParameterNames,getParameterValues和getParameterMap也可能需要覆盖 
+    */  
+    @Override  
+    public String getParameter(String name) {
+        Boolean flag = ("content".equals(name) || name.endsWith("WithHtml"));
+        if( flag && !isIncludeRichText){
+            return super.getParameter(name);
+        }
+        name = JsoupUtil.clean(name);
+        String value = super.getParameter(name);  
+        if (StringUtils.isNotBlank(value)) {
+            value = JsoupUtil.clean(value);  
+        }
+        return value;  
+    }  
+    
+    @Override
+    public String[] getParameterValues(String name) {
+    	String[] arr = super.getParameterValues(name);
+    	if(arr != null){
+    		for (int i=0;i
+    			arr[i] = JsoupUtil.clean(arr[i]);
+    		}
+    	}
+    	return arr;
+    }
+    
+  
+    /** 
+    * 覆盖getHeader方法，将参数名和参数值都做xss过滤。 
+    * 如果需要获得原始的值，则通过super.getHeaders(name)来获取 
+    * getHeaderNames 也可能需要覆盖 
+    */  
+    @Override  
+    public String getHeader(String name) {  
+        name = JsoupUtil.clean(name);
+        String value = super.getHeader(name);  
+        if (StringUtils.isNotBlank(value)) {  
+            value = JsoupUtil.clean(value); 
+        }  
+        return value;  
+    }  
+  
+    /** 
+    * 获取最原始的request 
+    * 
+    * @return 
+    */  
+    public HttpServletRequest getOrgRequest() {  
+        return orgRequest;  
+    }  
+  
+    /** 
+    * 获取最原始的request的静态方法 
+    * 
+    * @return 
+    */  
+    public static HttpServletRequest getOrgRequest(HttpServletRequest req) {  
+        if (req instanceof XssHttpServletRequestWrapper) {  
+            return ((XssHttpServletRequestWrapper) req).getOrgRequest();  
+        }  
+  
+        return req;  
+    }    
+} 
+```
+
+
+ 
+
+
+
