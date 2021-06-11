@@ -2,7 +2,7 @@
 title: MySql事务级别
 date: 2020-07-01 20:00:48
 categories: 
-- MySql
+- 事务
 tags:
 - MySql
 - 事务

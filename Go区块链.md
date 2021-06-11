@@ -2,9 +2,10 @@
 title: Go区块链
 date: 2020-07-01 20:00:48
 categories: 
-- 区块链
+- Go
 tags:
 - 区块链
+- Go
 ---
 
 Go语言编程实现一个简单的区块链

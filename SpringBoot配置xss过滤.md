@@ -12,7 +12,7 @@ SpringBoot配置Xss攻击过滤
 
 ## 步骤
 1. 实现Filter接口，实现Filter方法
-``` actionscript
+``` stylus
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -106,10 +106,9 @@ public class XssFilter implements Filter {
 	public void destroy() {}  
   
 }  
-```
-
+``` 
 2. 将自定义Filter加入过滤链
-``` java
+``` stylus
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 
@@ -118,7 +117,7 @@ import org.apache.commons.lang3.StringUtils;
 
 
 /** 
- * {@link XssHttpServletRequestWrapper}
+ * <code>{@link XssHttpServletRequestWrapper}</code>
  * @author win7
  */  
 public class XssHttpServletRequestWrapper extends HttpServletRequestWrapper {  
@@ -132,8 +131,8 @@ public class XssHttpServletRequestWrapper extends HttpServletRequestWrapper {
     }  
   
     /** 
-    * 覆盖getParameter方法，将参数名和参数值都做xss过滤。 
-    * 如果需要获得原始的值，则通过super.getParameterValues(name)来获取 
+    * 覆盖getParameter方法，将参数名和参数值都做xss过滤。<br/> 
+    * 如果需要获得原始的值，则通过super.getParameterValues(name)来获取<br/> 
     * getParameterNames,getParameterValues和getParameterMap也可能需要覆盖 
     */  
     @Override  
@@ -154,7 +153,7 @@ public class XssHttpServletRequestWrapper extends HttpServletRequestWrapper {
     public String[] getParameterValues(String name) {
     	String[] arr = super.getParameterValues(name);
     	if(arr != null){
-    		for (int i=0;i
+    		for (int i=0;i<arr.length;i++) {
     			arr[i] = JsoupUtil.clean(arr[i]);
     		}
     	}
@@ -163,8 +162,8 @@ public class XssHttpServletRequestWrapper extends HttpServletRequestWrapper {
     
   
     /** 
-    * 覆盖getHeader方法，将参数名和参数值都做xss过滤。 
-    * 如果需要获得原始的值，则通过super.getHeaders(name)来获取 
+    * 覆盖getHeader方法，将参数名和参数值都做xss过滤。<br/> 
+    * 如果需要获得原始的值，则通过super.getHeaders(name)来获取<br/> 
     * getHeaderNames 也可能需要覆盖 
     */  
     @Override  
@@ -198,11 +197,7 @@ public class XssHttpServletRequestWrapper extends HttpServletRequestWrapper {
   
         return req;  
     }    
-} 
+}  
 ```
-
-
- 
-
 
 
